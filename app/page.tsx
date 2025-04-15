@@ -1,103 +1,150 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useSnackbar } from '@/components/SnackBar-context';
+import { compressAndConvertToWebP } from '@/lib/compress';
+import { useState } from 'react';
+
+export default function FileUploadPage() {
+  const [file, setFile] = useState<File | null>(null);
+  const [compressedFile, setCompressedFile] = useState<Blob | null>(null);
+  const [originalSizeKB, setOriginalSizeKB] = useState<string | null>(null);
+  const [compressedSizeKB, setCompressedSizeKB] = useState<string | null>(null);
+  const [maxSizeMB, setMaxSizeMB] = useState<number>(1); 
+  const { snackbar } = useSnackbar(); 
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const droppedFiles = e.dataTransfer.files;
+    if (droppedFiles && droppedFiles.length > 0) {
+      resetState();
+      setFile(droppedFiles[0]);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    if (selectedFiles && selectedFiles.length > 0) {
+      resetState();
+      setFile(selectedFiles[0]);
+    }
+  };
+
+  const resetState = () => {
+    setCompressedFile(null);
+    setOriginalSizeKB(null);
+    setCompressedSizeKB(null);
+  };
+
+  const processFile = async () => {
+    if (!file) return;
+
+    
+
+    snackbar.promise( (async ()=> {
+      const originalKB = (file.size / 1024).toFixed(2);
+      setOriginalSizeKB(originalKB);
+
+      const processed = await compressAndConvertToWebP(file, maxSizeMB);
+      const compressedKB = (processed.size / 1024).toFixed(2);
+
+      setCompressedFile(processed);
+    setCompressedSizeKB(compressedKB);
+    })(), {
+      loading: { message: 'Compressing your picture...' },
+      success: {
+        message: 'Your Image has been compressed',
+        options: { icon: <img src='/tick.svg' alt='Success'/>, duration: 3000 },
+      },
+      error: { message: 'The cruiser got a flat tire!' },
+    });
+
+    
+  };
+
+  const downloadCompressedImage = () => {
+    if (!compressedFile) return;
+    const url = URL.createObjectURL(compressedFile);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'compressed-image.webp';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen bg-gray-100 p-8">
+      <div className="max-w-2xl mx-auto bg-white shadow-xl rounded-2xl p-8 space-y-6">
+        <h1 className="text-2xl font-bold text-center">Upload a File</h1>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+        <div
+          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+          className="border-4 border-dashed border-gray-300 rounded-2xl p-12 text-center text-gray-500 hover:border-blue-500 transition"
+        >
+          Drag & Drop a file here or click the button below
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+
+        <div className="text-center">
+          <label className="inline-block cursor-pointer bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 transition">
+            Select File
+            <input
+              type="file"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </label>
+        </div>
+
+        <div className="text-center">
+          <label className="block text-sm font-medium text-gray-700 mt-4">Max Size (MB)</label>
+          <input
+            type="number"
+            value={maxSizeMB}
+            onChange={(e) => setMaxSizeMB(Number(e.target.value))}
+            min={0.1}
+            step={0.1}
+            className="mt-1 px-4 py-2 rounded-xl border border-gray-300 focus:ring-blue-500 focus:border-blue-500 w-32 text-center"
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </div>
+
+        {file && (
+          <div className="mt-6">
+            <h2 className="text-lg font-semibold mb-2">Selected File:</h2>
+            <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl shadow-sm">
+              <span className="truncate max-w-xs">{file.name}</span>
+              <span className="text-sm text-gray-400">{(file.size / 1024).toFixed(2)} KB</span>
+            </div>
+          </div>
+        )}
+
+        {compressedFile && (
+          <div className="mt-6 space-y-2">
+            <h2 className="text-lg font-semibold">Compression Result:</h2>
+            <div className="bg-green-50 p-3 rounded-xl shadow-sm text-sm space-y-1">
+              <div>Original Size: <strong>{originalSizeKB} KB</strong></div>
+              <div>Compressed Size: <strong>{compressedSizeKB} KB</strong></div>
+            </div>
+            <button
+              onClick={downloadCompressedImage}
+              className="mt-3 bg-purple-600 text-white px-6 py-2 rounded-xl hover:bg-purple-700 transition"
+            >
+              Download Compressed Image
+            </button>
+          </div>
+        )}
+
+        <div className="text-center pt-4">
+          <button
+            onClick={processFile}
+            className="bg-green-600 text-white px-6 py-2 rounded-xl hover:bg-green-700 transition disabled:bg-gray-400"
+            disabled={!file}
+          >
+            Submit
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
